@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frida's Math Game</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .game {
+      text-align: center;
+      padding: 2.5rem 3rem;
+      border-radius: 2rem;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+      width: min(90vw, 480px);
+      animation: fadeUp 0.6s ease-out;
+    }
+
+    .title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b, #48dbfb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 1rem 0 1.5rem;
+      font-size: 1.05rem;
+    }
+
+    .stats span {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 0.4rem 1rem;
+      border-radius: 2rem;
+    }
+
+    .stats .label { opacity: 0.7; font-size: 0.85rem; }
+
+    .problem {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin: 1rem 0;
+      letter-spacing: 0.05em;
+      min-height: 4.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .problem .equals { margin-left: 0.3em; opacity: 0.5; }
+
+    .input-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.8rem;
+      margin: 1.5rem 0 1rem;
+    }
+
+    .answer-input {
+      width: 140px;
+      font-size: 2rem;
+      text-align: center;
+      padding: 0.5rem;
+      border: 3px solid rgba(255, 255, 255, 0.4);
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .answer-input:focus {
+      border-color: #ffd700;
+    }
+
+    .answer-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .submit-btn {
+      font-size: 1.4rem;
+      padding: 0.6rem 1.8rem;
+      border: none;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #ffd700, #f0932b);
+      color: #333;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .submit-btn:hover { transform: scale(1.05); }
+    .submit-btn:active { transform: scale(0.97); }
+
+    .feedback {
+      font-size: 1.5rem;
+      font-weight: 700;
+      min-height: 2.2rem;
+      margin-top: 0.8rem;
+      transition: opacity 0.3s;
+    }
+
+    .feedback.correct { color: #2ecc71; }
+    .feedback.wrong { color: #ff6b6b; }
+
+    .start-btn {
+      font-size: 1.6rem;
+      padding: 0.8rem 2.5rem;
+      border: none;
+      border-radius: 1.2rem;
+      background: linear-gradient(135deg, #2ecc71, #1abc9c);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s;
+    }
+
+    .start-btn:hover { transform: scale(1.06); }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%      { transform: translateX(-12px); }
+      40%      { transform: translateX(12px); }
+      60%      { transform: translateX(-8px); }
+      80%      { transform: translateX(8px); }
+    }
+
+    .pop { animation: pop 0.35s ease; }
+    .shake { animation: shake 0.4s ease; }
+  </style>
+</head>
+<body>
+  <div class="game">
+    <!-- Start screen -->
+    <div id="start-screen" class="screen active">
+      <div class="title">Frida's Math Game</div>
+      <p style="font-size:3rem; margin:1rem 0">🧮</p>
+      <p style="opacity:0.8; font-size:1.1rem; margin-bottom:0.5rem">Solve math problems and earn points!</p>
+      <button class="start-btn" id="start-btn">Let's Go!</button>
+    </div>
+
+    <!-- Game screen -->
+    <div id="game-screen" class="screen">
+      <div class="title">Frida's Math Game</div>
+      <div class="stats">
+        <span><span class="label">Score </span><strong id="score">0</strong></span>
+        <span><span class="label">Level </span><strong id="level">1</strong></span>
+      </div>
+      <div class="problem" id="problem"></div>
+      <div class="input-row">
+        <input type="number" class="answer-input" id="answer" placeholder="?" autocomplete="off">
+        <button class="submit-btn" id="submit-btn">Go!</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+
+  <script>
+    const ENCOURAGEMENTS = [
+      "Great job! 🌟", "Awesome! 🎉", "You're a star! ⭐",
+      "Super! 💪", "Amazing! 🚀", "Brilliant! 🧠", "Wow! 🎊",
+      "Keep it up! 🔥", "Fantastic! 🏆", "Nailed it! 💯"
+    ];
+    const MISS_MESSAGES = [
+      "Almost! Try the next one 💪", "Keep going! 🌈",
+      "You've got this! 🙌", "So close! 🤏", "Don't give up! 🌟",
+      "Nice try! Next one! 🎯"
+    ];
+
+    let state = { problem: "", expected: 0, score: 0, level: 1, streak: 0 };
+    let busy = false;
+
+    const $ = id => document.getElementById(id);
+
+    $("start-btn").addEventListener("click", startGame);
+    $("submit-btn").addEventListener("click", submitAnswer);
+    $("answer").addEventListener("keydown", e => {
+      if (e.key === "Enter") submitAnswer();
+    });
+
+    async function startGame() {
+      const res = await fetch("/api/start", { method: "POST" });
+      const data = await res.json();
+      state = {
+        problem: data.problem,
+        expected: data.expected,
+        score: data.score,
+        level: data.level,
+        streak: data.streak,
+      };
+      render();
+      $("start-screen").classList.remove("active");
+      $("game-screen").classList.add("active");
+      $("answer").focus();
+    }
+
+    function render() {
+      $("problem").innerHTML = state.problem + '<span class="equals"> =</span>';
+      $("score").textContent = state.score % 1 === 0 ? state.score : state.score.toFixed(1);
+      $("level").textContent = state.level;
+    }
+
+    async function submitAnswer() {
+      if (busy) return;
+      const val = $("answer").value.trim();
+      if (val === "") return;
+
+      busy = true;
+      const answer = parseFloat(val);
+
+      const res = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answer,
+          expected: state.expected,
+          score: state.score,
+          level: state.level,
+          streak: state.streak,
+        }),
+      });
+
+      const data = await res.json();
+      const fb = $("feedback");
+      const problemEl = $("problem");
+
+      if (data.correct) {
+        fb.textContent = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+        fb.className = "feedback correct";
+        problemEl.classList.add("pop");
+      } else {
+        fb.textContent = `${state.expected} — ` + MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
+        fb.className = "feedback wrong";
+        problemEl.classList.add("shake");
+      }
+
+      setTimeout(() => {
+        problemEl.classList.remove("pop", "shake");
+      }, 400);
+
+      state.problem = data.nextProblem;
+      state.expected = data.nextExpected;
+      state.score = data.newScore;
+      state.level = data.newLevel;
+      state.streak = data.streak;
+
+      $("answer").value = "";
+      render();
+
+      setTimeout(() => {
+        fb.textContent = "";
+        fb.className = "feedback";
+        busy = false;
+        $("answer").focus();
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
