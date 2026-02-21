@@ -195,8 +195,7 @@
       position: absolute;
       inset: 0;
       border-radius: 2rem;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(6px);
+      background: url('level-up-bg.png') center/cover no-repeat;
       z-index: 10;
       flex-direction: column;
       align-items: center;
@@ -214,15 +213,15 @@
     .level-banner .banner-text {
       font-size: 2.4rem;
       font-weight: 800;
-      background: linear-gradient(90deg, #ffd700, #ff6b6b, #48dbfb);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.7), 0 0 30px rgba(255,215,0,0.6);
       animation: flash 0.6s ease-in-out 4;
     }
 
     .level-banner .banner-sub {
       font-size: 1.1rem;
-      opacity: 0.8;
+      color: #fff;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.8);
     }
 
     @keyframes bannerIn {
