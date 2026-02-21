@@ -163,6 +163,77 @@
 
     .pop { animation: pop 0.35s ease; }
     .shake { animation: shake 0.4s ease; }
+
+    .game { position: relative; }
+
+    .exit-btn {
+      position: absolute;
+      top: 0.8rem;
+      right: 0.8rem;
+      width: 2.2rem;
+      height: 2.2rem;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      line-height: 1;
+    }
+
+    .exit-btn:hover {
+      background: rgba(255, 80, 80, 0.5);
+      color: #fff;
+    }
+
+    .level-banner {
+      display: none;
+      position: absolute;
+      inset: 0;
+      border-radius: 2rem;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 10;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .level-banner.visible {
+      display: flex;
+      animation: bannerIn 0.4s ease-out;
+    }
+
+    .level-banner .banner-icon { font-size: 3.5rem; }
+
+    .level-banner .banner-text {
+      font-size: 2.4rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b, #48dbfb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: flash 0.6s ease-in-out 4;
+    }
+
+    .level-banner .banner-sub {
+      font-size: 1.1rem;
+      opacity: 0.8;
+    }
+
+    @keyframes bannerIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes flash {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(1.08); }
+    }
   </style>
 </head>
 <body>
@@ -175,8 +246,16 @@
       <button class="start-btn" id="start-btn">Let's Go!</button>
     </div>
 
+    <!-- Level-up banner overlay -->
+    <div class="level-banner" id="level-banner">
+      <span class="banner-icon">🎉</span>
+      <span class="banner-text" id="banner-text">Level 2!</span>
+      <span class="banner-sub">Keep going, you're awesome!</span>
+    </div>
+
     <!-- Game screen -->
     <div id="game-screen" class="screen">
+      <button class="exit-btn" id="exit-btn" title="Exit game">✕</button>
       <div class="title">Frida's Math Game</div>
       <div class="stats">
         <span><span class="label">Score </span><strong id="score">0</strong></span>
@@ -213,6 +292,7 @@
     $("answer").addEventListener("keydown", e => {
       if (e.key === "Enter") submitAnswer();
     });
+    $("exit-btn").addEventListener("click", exitGame);
 
     async function startGame() {
       const res = await fetch("/api/start", { method: "POST" });
@@ -283,12 +363,34 @@
       $("answer").value = "";
       render();
 
+      if (data.leveledUp) {
+        showLevelBanner(data.newLevel);
+      }
+
       setTimeout(() => {
         fb.textContent = "";
         fb.className = "feedback";
         busy = false;
         $("answer").focus();
       }, 1500);
+    }
+
+    function showLevelBanner(level) {
+      const banner = $("level-banner");
+      $("banner-text").textContent = `Level ${level}!`;
+      banner.classList.add("visible");
+      setTimeout(() => {
+        banner.classList.remove("visible");
+      }, 2500);
+    }
+
+    function exitGame() {
+      $("game-screen").classList.remove("active");
+      $("start-screen").classList.add("active");
+      $("feedback").textContent = "";
+      $("feedback").className = "feedback";
+      $("answer").value = "";
+      state = { problem: "", expected: 0, score: 0, level: 1, streak: 0 };
     }
   </script>
 </body>

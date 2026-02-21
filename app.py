@@ -85,11 +85,13 @@ class GameHandler(SimpleHTTPRequestHandler):
             streak = body.get("streak", 0)
 
             correct = answer == expected
+            old_level = level
             score, level, streak = compute_new_state(correct, score, level, streak)
             next_q = generate_problem(level)
 
             response = {
                 "correct": correct,
+                "leveledUp": level > old_level,
                 "newScore": score,
                 "newLevel": level,
                 "streak": streak,
